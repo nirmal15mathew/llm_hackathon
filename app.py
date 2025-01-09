@@ -1,8 +1,8 @@
 # app.py
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from llm import ask_llm
+from llm import update_context_files
 # from sockets import sio_app
 
 import asyncio
@@ -42,6 +42,15 @@ class TextRequest(BaseModel):
     text: str
 
 
+@app.post('/submit-file')
+async def submit_file(file: UploadFile):
+    with open(f"data/{file.filename}", 'wb') as f:
+        file_bytes = await file.read()
+        f.write(file_bytes)
+    update_context_files()
+    return {
+        "filename": file.filename
+    }
 
 @app.post("/submit-text")
 async def submit_text(request: TextRequest):
@@ -57,6 +66,6 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     while True:
         data = await websocket.receive_text()
-        async for chunk in async_generate_llm_stream(data):
-            await websocket.send_text(f"{chunk}")
+        # async for chunk in async_generate_llm_stream(data):
+        #     await websocket.send_text(f"{chunk}")
         await websocket.send_text("end_stream")
